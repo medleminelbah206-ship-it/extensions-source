@@ -1,10 +1,7 @@
 package eu.kanade.tachiyomi.extension.en.hentaimilftoon
 
 import eu.kanade.tachiyomi.multisrc.madara.Madara
+import keiyoushi.annotation.Source
 
-class HentaiMilfToon :
-    Madara(
-        "HentaiMilfToon",
-        "https://www.hentaimilftoon.com",
-        "en",
-    )
+@Source
+abstract class HentaiMilfToon : Madara()
