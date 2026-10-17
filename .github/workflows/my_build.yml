@@ -40,34 +40,58 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p out/apk
-          cp src/en/hentaimilftoon/build/outputs/apk/release/*.apk out/apk/
-          APK=$(ls out/apk/*.apk | head -n 1)
-          AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt | sort -V | tail -n 1)
-          $AAPT dump badging "$APK" | head -n 1 > badging.txt
+          pip install -U protobuf
+          B=src/en/hentaimilftoon/build
+          mkdir -p out/apk out/jar
+          cp $B/outputs/apk/release/*.apk out/apk/
+          cp $B/outputs/jar/release/*.jar out/jar/
+          cp $B/keiyoushi-source-info.json out/source-info.json
+          FP=$(keytool -list -v -keystore signingkey.jks -storepass mypass123 -alias myalias | grep 'SHA256:' | head -n 1 | sed 's/.*SHA256: //' | tr -d ':' | tr 'A-F' 'a-f')
+          export FP
+          export BASE="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/repo"
+          export ICON="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/core/src/main/res/mipmap-xhdpi/ic_launcher.png"
+          export PYTHONPATH=.github/scripts
           python3 - <<'EOF'
-          import json, re, os, hashlib, glob
-          line = open('badging.txt').read()
-          pkg = re.search(r"name='([^']+)'", line).group(1)
-          code = int(re.search(r"versionCode='(\d+)'", line).group(1))
-          ver = re.search(r"versionName='([^']+)'", line).group(1)
+          import json, os, glob, gzip
+          import index_pb2
+          from google.protobuf import json_format
+          info = json.load(open('out/source-info.json'))
           apk = os.path.basename(glob.glob('out/apk/*.apk')[0])
-          h = hashlib.md5(b"hentaimilftoon/en/1").digest()
-          sid = int.from_bytes(h[:8], 'big') & 0x7FFFFFFFFFFFFFFF
-          index = [{
-            "name": "Tachiyomi: HentaiMilfToon",
-            "pkg": pkg, "apk": apk, "lang": "en",
-            "code": code, "version": ver, "nsfw": 1,
-            "sources": [{"name": "HentaiMilfToon", "lang": "en",
-                         "id": str(sid),
-                         "baseUrl": "https://www.hentaimilftoon.com"}]
-          }]
-          json.dump(index, open('out/index.min.json', 'w'))
+          jar = os.path.basename(glob.glob('out/jar/*.jar')[0])
+          base = os.environ['BASE']
+          ext = index_pb2.Extension(
+              name=info['name'],
+              packageName=info['packageName'],
+              resources=index_pb2.Resources(
+                  iconUrl=os.environ['ICON'],
+                  apkUrl=f"{base}/apk/{apk}",
+                  jarUrl=f"{base}/jar/{jar}",
+              ),
+              extensionLib=info['extensionLib'],
+              versionCode=info['versionCode'],
+              versionName=info['versionName'],
+              contentWarning=info['contentWarning'],
+              sources=[
+                  index_pb2.Source(
+                      id=int(s['id']), name=s['name'], language=s['lang'],
+                      homeUrl=s['baseUrl'], mirrorUrls=s.get('mirrorUrls', []),
+                  ) for s in info['sources']
+              ],
+          )
+          index = index_pb2.Index(
+              name="My Repo",
+              badgeLabel="MY",
+              signingKey=os.environ['FP'],
+              contact=index_pb2.Contact(website="https://github.com"),
+              extensionList=index_pb2.ExtensionList(extensions=[ext]),
+          )
+          open('out/index.json', 'w').write(json_format.MessageToJson(
+              index, always_print_fields_with_no_presence=False,
+              preserving_proto_field_name=True))
+          open('out/index.pb', 'wb').write(
+              gzip.compress(index.SerializeToString(deterministic=True), mtime=0))
           EOF
-                    FP=$(keytool -list -v -keystore signingkey.jks -storepass mypass123 -alias myalias | grep 'SHA256:' | head -n 1 | sed 's/.*SHA256: //' | tr -d ':' | tr 'A-F' 'a-f')
-          cat > out/repo.json <<JSON
-          {"meta":{"name":"My Repo","shortName":"MyRepo","website":"https://github.com","signingKeyFingerprint":"$FP"}}
-          JSON
+          rm out/source-info.json
           cd out
           git init -b repo
           git config user.email "bot@users.noreply.github.com"
