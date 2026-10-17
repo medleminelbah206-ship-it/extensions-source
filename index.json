@@ -1,0 +1,33 @@
+{
+  "name": "My Repo",
+  "badgeLabel": "MY",
+  "signingKey": "43a1edd34b33abf91714eb6182cd656460f4380691ae64a1cd1496ca215604c6",
+  "contact": {
+    "website": "https://github.com"
+  },
+  "extensionList": {
+    "extensions": [
+      {
+        "name": "HentaiMilfToon",
+        "packageName": "eu.kanade.tachiyomi.extension.en.hentaimilftoon",
+        "resources": {
+          "apkUrl": "https://raw.githubusercontent.com/medleminelbah206-ship-it/extensions-source/repo/apk/tachiyomi-en.hentaimilftoon-v1.6.56.apk",
+          "iconUrl": "https://raw.githubusercontent.com/medleminelbah206-ship-it/extensions-source/main/core/src/main/res/mipmap-xhdpi/ic_launcher.png",
+          "jarUrl": "https://raw.githubusercontent.com/medleminelbah206-ship-it/extensions-source/repo/jar/tachiyomi-en.hentaimilftoon-v1.6.56.jar"
+        },
+        "extensionLib": "1.6",
+        "versionCode": "106056",
+        "versionName": "1.6.56",
+        "contentWarning": "CONTENT_WARNING_MIXED",
+        "sources": [
+          {
+            "id": "8098525235852588542",
+            "name": "HentaiMilfToon",
+            "language": "en",
+            "homeUrl": "https://www.hentaimilftoon.com"
+          }
+        ]
+      }
+    ]
+  }
+}
