@@ -64,6 +64,10 @@ jobs:
           }]
           json.dump(index, open('out/index.min.json', 'w'))
           EOF
+                    FP=$(keytool -list -v -keystore signingkey.jks -storepass mypass123 -alias myalias | grep 'SHA256:' | head -n 1 | sed 's/.*SHA256: //' | tr -d ':' | tr 'A-F' 'a-f')
+          cat > out/repo.json <<JSON
+          {"meta":{"name":"My Repo","shortName":"MyRepo","website":"https://github.com","signingKeyFingerprint":"$FP"}}
+          JSON
           cd out
           git init -b repo
           git config user.email "bot@users.noreply.github.com"
