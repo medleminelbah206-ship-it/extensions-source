@@ -6,9 +6,9 @@ plugins {
 
 keiyoushi {
     name = "HentaiMilfToon"
-    versionCode = 2
+    versionCode = 1
     contentWarning = ContentWarning.MIXED
-    libVersion = "1.5"
+    libVersion = "1.6"
     theme = "madara"
 
     source {
