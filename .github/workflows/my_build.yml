@@ -1,0 +1,74 @@
+name: Build my extension
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Java
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6
+        with:
+          java-version: 25
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
+
+      - name: Create my own signing key
+        run: |
+          keytool -genkeypair -keystore signingkey.jks -storepass mypass123 \
+            -keypass mypass123 -alias myalias -keyalg RSA -keysize 2048 \
+            -validity 10000 -dname "CN=me"
+
+      - name: Build only HentaiMilfToon
+        env:
+          ALIAS: myalias
+          KEY_STORE_PASSWORD: mypass123
+          KEY_PASSWORD: mypass123
+        run: ./gradlew :src:en:hentaimilftoon:assembleRelease
+
+      - name: Publish to repo branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out/apk
+          cp src/en/hentaimilftoon/build/outputs/apk/release/*.apk out/apk/
+          APK=$(ls out/apk/*.apk | head -n 1)
+          AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt | sort -V | tail -n 1)
+          $AAPT dump badging "$APK" | head -n 1 > badging.txt
+          python3 - <<'EOF'
+          import json, re, os, hashlib, glob
+          line = open('badging.txt').read()
+          pkg = re.search(r"name='([^']+)'", line).group(1)
+          code = int(re.search(r"versionCode='(\d+)'", line).group(1))
+          ver = re.search(r"versionName='([^']+)'", line).group(1)
+          apk = os.path.basename(glob.glob('out/apk/*.apk')[0])
+          h = hashlib.md5(b"hentaimilftoon/en/1").digest()
+          sid = int.from_bytes(h[:8], 'big') & 0x7FFFFFFFFFFFFFFF
+          index = [{
+            "name": "Tachiyomi: HentaiMilfToon",
+            "pkg": pkg, "apk": apk, "lang": "en",
+            "code": code, "version": ver, "nsfw": 1,
+            "sources": [{"name": "HentaiMilfToon", "lang": "en",
+                         "id": str(sid),
+                         "baseUrl": "https://www.hentaimilftoon.com"}]
+          }]
+          json.dump(index, open('out/index.min.json', 'w'))
+          EOF
+          cd out
+          git init -b repo
+          git config user.email "bot@users.noreply.github.com"
+          git config user.name "bot"
+          git add .
+          git commit -m "Publish extension"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin repo
